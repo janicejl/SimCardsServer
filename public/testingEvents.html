@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<button id='gameOver'>Game Over.</button>
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+var onGameOver = function() {
+	console.log('gameOver');
+	io.connect().emit('gameOver');
+}
+var gameOver = document.getElementById('gameOver');
+gameOver.addEventListener('click', onGameOver);
+
+/**
+ * A player that can be identified by its player_id. 
+ */
+var Player = function() {
+	this.id = -1;
+	this.movesLeft = 5;
+	this.alive = false;
+};
+
+/**
+ * Sets the player's assigned id once a connection to the server
+ * has been established. 0 is the host. 1, 2, 3 are normal guests.
+ * @param {Integer} player_id The assigned id
+ */
+Player.prototype.setPlayerId = function(player_id) {
+	this.id = player_id;
+	console.log('set the player id to: ' + player_id);
+};
+
+/**
+ * If the player is the host (player_id is 0), then they will send
+ * each player the cards that were dealt to them in the beginning of
+ * the game. The cards will be in 4 arrays, in JSON format, which
+ * should be taken care of in the Android part of this.
+ */
+Player.prototype.sendDealedCards = function() {
+	var cards = {'message': 'dealedCards'};
+	console.log('dealedCards by ' + player.id);
+	io.connect().emit('dealedCards', cards);
+};
+
+/**
+ * If the player has updated their move, sends the server the
+ * new information so that all the other players can update their
+ * views.
+ */
+Player.prototype.sendPlayerMove = function() {
+	var move = {'message': 'playerMove'};
+	console.log('playerMove by ' + player.id);
+	io.connect().emit('playerMove', move);
+};
+
+/**
+ * If the player has been kicked out of the game, or for some reason
+ * passes? (if the game allows, but that might be in the far future),
+ * then it tells the server that their is no move to be made and to
+ * skip their turn.
+ */
+Player.prototype.sendNoMove = function() {
+	var move = {'message': 'noMove'};
+	console.log('noMove by ' + player.id);
+	io.connect().emit('noMove', move);
+};
+
+var player = new Player();
+
+/**
+ * Listens for the server to confirm that we are connected to the
+ * game. The server will assign us an integer that will be our
+ * player id. 
+ * @param {"player_id": Integer} data Contains the player id.
+ */
+io.connect().on('connected', function(data) {
+	player.setPlayerId(data.player_id);
+});
+
+/**
+ * Registered once 4 players have joined the game. And if we're the
+ * host, then we send out all the cards for each player.
+ */
+io.connect().on('gameFull', function() {
+	if (player.id == 0) {
+		player.sendDealedCards();
+	}
+	else {
+		console.log(player.id + ' recognizes game is full');
+	}
+});
+
+/**
+ * Registers that the game has started, and turns each player 
+ * "alive", not to sound zombie like or anything.
+ */
+io.connect().on('gameStart', function(data) {
+	player.alive = true;
+	console.log('gameStart recognized by ' + data.player_id); 
+});
+
+/**
+ * It is someone's turn now. Need to check if it's our turn and if
+ * we're alive. If it is our turn, decrement the number of moves
+ * we have left for now so we can run through all cases.
+ */
+io.connect().on('playerTurn', function(data) {
+	if (data.player_id == player.id) {
+		console.log(data.player_id + "'s turn");
+		if (player.alive && player.movesLeft > 0) {
+			player.movesLeft -= 1;
+			console.log(data.player_id + ' has ' + player.movesLeft + 'moves left');
+			player.sendPlayerMove();
+		}
+		else {
+			player.sendNoMove();
+		}
+	}
+});
+
+/**
+ * The server says that someone has played a move and tells me
+ * which player it was by their player id. This is so each
+ * player can update their own view.
+ */
+io.connect().on('movePlayed', function(data) {
+	console.log('A move by' + data.player_id + 'was recognized by ' + player.id);
+});
+
+/**
+ * Server updates us when a player has lost so that we can update
+ * our own game state.
+ */
+io.connect().on('playerDied', function(data) {
+	console.log(player.id + 'recognized that ' + data.player_id + 'died');
+});
+
+</script>
+
+</body>
+</html>

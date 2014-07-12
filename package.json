@@ -1,0 +1,17 @@
+{
+  "name": "SimCardsGameServer",
+  "version": "0.0.1-1",
+  "description": "sim card game server",
+  "dependencies": {
+    "socket.io": "~1.0.6",
+    "express": "~4.6.0",
+    "logger": "0.0.1"
+  },
+  "subdomain": "sim_card_game_server",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": "0.10.x"
+  }
+}
